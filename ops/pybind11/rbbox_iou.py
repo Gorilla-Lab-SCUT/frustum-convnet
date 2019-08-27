@@ -1,4 +1,3 @@
-import numba
 import numpy as np
 
 from . import box_ops_cc
@@ -102,7 +101,7 @@ def bbox_overlaps_3d(anchors, gt_boxes):
 
 def rbbox2corner(boxes_2d):
     '''
-    boxes_3d: n, 4 (cx, cz, l, w, r)
+    boxes_2d: n, 4 (cx, cz, l, w, r)
     return n, 4, 2
 
     '''
@@ -173,7 +172,7 @@ def rbbox_iou(boxes_2d, qboxes_2d, standup_thresh=0.0):
 
 def rbbox_iou_3d(boxes_3d, qboxes_3d, standup_thresh=0.0):
     '''
-    boxes_3d: (cx, cy, cz, l, w, h, r) n, 7
+    boxes_3d, qboxes_3d: (cx, cy, cz, l, w, h, r) n, 7
 
     '''
 
@@ -192,7 +191,7 @@ def rbbox_iou_3d(boxes_3d, qboxes_3d, standup_thresh=0.0):
 
 def rbbox_iou_3d_pair(boxes_3d, qboxes_3d):
     '''
-    boxes_3d: (cx, cy, cz, l, w, h, r) n, 7
+    boxes_3d, qboxes_3d: (cx, cy, cz, l, w, h, r) n, 7
 
     '''
     assert boxes_3d.shape == qboxes_3d.shape
@@ -208,7 +207,7 @@ def cube_nms_np(dets, nms_thresh, top_k=300):
     '''
     :param dets: [[cx, cy, cz, l, w, h, ry, score]]
     :param thresh: retain overlap < thresh
-    :return: indexes to keep
+    :return: indices to keep
     '''
     if dets.shape[0] == 0:
         return []
@@ -244,7 +243,7 @@ def bev_nms_np(dets, nms_thresh, top_k=300):
     '''
     :param dets: [[cx, cz, l, w, ry, score]]
     :param thresh: retain overlap < thresh
-    :return: indexes to keep
+    :return: indices to keep
     '''
     if dets.shape[0] == 0:
         return []
@@ -274,54 +273,6 @@ def bev_nms_np(dets, nms_thresh, top_k=300):
         order = order[inds + 1]
 
     return keep
-
-
-@numba.jit(nopython=True)
-def iou_jit(boxes, query_boxes, eps=0.0):
-    """calculate box iou. note that jit version runs 2x faster than cython in 
-    my machine!
-    Parameters
-    ----------
-    boxes: (N, 4) ndarray of float
-    query_boxes: (K, 4) ndarray of float
-    Returns
-    -------
-    overlaps: (N, K) ndarray of overlap between boxes and query_boxes
-    """
-    N = boxes.shape[0]
-    K = query_boxes.shape[0]
-    overlaps = np.zeros((N, K), dtype=boxes.dtype)
-    for k in range(K):
-        box_area = ((query_boxes[k, 2] - query_boxes[k, 0] + eps) *
-                    (query_boxes[k, 3] - query_boxes[k, 1] + eps))
-        for n in range(N):
-            iw = (min(boxes[n, 2], query_boxes[k, 2]) -
-                  max(boxes[n, 0], query_boxes[k, 0]) + eps)
-            if iw > 0:
-                ih = (min(boxes[n, 3], query_boxes[k, 3]) -
-                      max(boxes[n, 1], query_boxes[k, 1]) + eps)
-                if ih > 0:
-                    ua = (
-                            (boxes[n, 2] - boxes[n, 0] + eps) *
-                            (boxes[n, 3] - boxes[n, 1] + eps) + box_area - iw * ih)
-                    overlaps[n, k] = iw * ih / ua
-    return overlaps
-
-
-def rotate_nms_cc(dets, thresh, top_k=300):
-    assert dets.shape[1] == 6
-    scores = dets[:, 5]
-
-    order = scores.argsort()[::-1].astype(np.int32)  # highest->lowest
-
-    boxes_corners = rbbox2corner(dets[:, :5])
-    boxes_standup = corner2standup(boxes_corners)
-
-    standup_iou = iou_jit(boxes_standup, boxes_standup, eps=0.0)
-    # print(dets_corners.shape, order.shape, standup_iou.shape)
-    keep = nms.rotate_non_max_suppression_cpu(boxes_corners, order, standup_iou, thresh)
-
-    return keep[:top_k]
 
 
 if __name__ == '__main__':

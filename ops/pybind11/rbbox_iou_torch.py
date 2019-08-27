@@ -112,7 +112,7 @@ def bbox_overlaps_3d(anchors, gt_boxes):
 
 def rbbox2corner(boxes_2d):
     '''
-    boxes_3d: n, 4 (cx, cz, l, w, r)
+    boxes_2d: n, 4 (cx, cz, l, w, r)
     return n, 4, 2
 
     '''
@@ -206,96 +206,6 @@ def rbbox_iou_3d(boxes_3d, qboxes_3d, standup_thresh=0.0):
     o = box_ops_cc.rbbox_iou_3d(bbox_corner_3d, qbbox_corner_3d, standup_iou, 0)
 
     return o
-
-
-def rotate_cube_nms_py(dets, nms_thresh, top_k=300):
-    '''
-    :param dets: [[cx, cy, cz, l, w, h, ry, score]]
-    :param thresh: retain overlap < thresh
-    :return: indexes to keep
-    '''
-    if dets.shape[0] == 0:
-        return []
-    if dets.shape[0] == 1:
-        return [0]
-
-    assert dets.shape[1] == 8
-
-    scores = dets[:, 7]
-
-    order = scores.argsort()[::-1]
-    order = order[:top_k]
-
-    keep = []
-    while order.size > 0:
-        i = order[0]
-        keep.append(i)
-        if order.size == 1:
-            break
-        box1 = dets[i, :7][np.newaxis, :]
-        boxes2 = dets[:, :7][order[1:]]
-
-        ovr = rbbox_iou_3d(box1, boxes2)
-        ovr = ovr[0]
-
-        inds = np.where(ovr <= nms_thresh)[0]
-        order = order[inds + 1]
-
-    return keep
-
-
-def rotate_bev_nms_py(dets, nms_thresh, top_k=300):
-    '''
-    :param dets: [[cx, cz, l, w, ry, score]]
-    :param thresh: retain overlap < thresh
-    :return: indexes to keep
-    '''
-    if dets.shape[0] == 0:
-        return []
-    if dets.shape[0] == 1:
-        return [0]
-
-    assert dets.shape[1] == 6
-
-    scores = dets[:, 5]
-
-    order = scores.argsort()[::-1]
-
-    keep = []
-    while order.size > 0:
-        i = order[0]
-        keep.append(i)
-        if order.size == 1:
-            break
-        box1 = dets[i, :5][np.newaxis, :]
-        boxes2 = dets[:, :5][order[1:]]
-
-        ovr = rbbox_iou(box1, boxes2)
-        ovr = ovr[0]
-
-        inds = np.where(ovr <= nms_thresh)[0]
-        order = order[inds + 1]
-
-    return keep[:top_k]
-
-
-def rotate_bev_nms_cc(dets, thresh, top_k=300):
-    assert dets.shape[1] == 6
-    scores = dets[:, 5]
-
-    _, order = torch.sort(scores, 0, descending=True)
-    boxes_corners = rbbox2corner(dets[:, :5])
-    boxes_standup = corner2standup(boxes_corners)
-
-    standup_iou = bbox_overlaps_2d(boxes_standup, boxes_standup)
-
-    boxes_corners = boxes_corners.cpu().numpy()
-    order = order.cpu().numpy().astype(np.int32)
-    standup_iou = standup_iou.cpu().numpy()
-
-    keep = nms.rotate_non_max_suppression_cpu(boxes_corners, order, standup_iou, thresh)
-
-    return keep[:top_k]
 
 
 if __name__ == '__main__':

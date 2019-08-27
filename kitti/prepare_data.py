@@ -605,22 +605,10 @@ if __name__ == '__main__':
     parser.add_argument('--gen_train', action='store_true',
                         help='Generate train split frustum data with perturbed GT 2D boxes')
 
-    parser.add_argument('--gen_train_det', action='store_true',
-                        help='Generate train split frustum data with Det 2D boxes')
-
     parser.add_argument('--gen_val', action='store_true', help='Generate val split frustum data with GT 2D boxes')
-
-    parser.add_argument('--gen_train_rgb_detection', action='store_true',
-                        help='Generate train split frustum data with RGB detection 2D boxes')
 
     parser.add_argument('--gen_val_rgb_detection', action='store_true',
                         help='Generate val split frustum data with RGB detection 2D boxes')
-
-    parser.add_argument('--gen_test_rgb_detection', action='store_true',
-                        help='Generate test split frustum data with RGB detection 2D boxes')
-
-    parser.add_argument('--gen_trainval', action='store_true',
-                        help='Generate trainval split frustum data with perturbed GT 2D boxes')
 
     parser.add_argument('--car_only', action='store_true', help='Only generate cars')
     parser.add_argument('--people_only', action='store_true', help='Only generate peds and cycs')

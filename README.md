@@ -72,7 +72,7 @@ The pickle files will be saved in `kitti/data/pickle_data`.
 python kitti/prepare_data.py --car_only --gen_train --gen_val --gen_val_rgb_detection
 ```
 
-Run following commands to train and evaluate the final model. You can use `export CUDA_VISIBLE_DEVICES=\?` to specify which GPU to use.
+Run following commands to train and evaluate the final model. You can use `export CUDA_VISIBLE_DEVICES=?` to specify which GPU to use.
 And you can modify the setting after `OUTPUT_DIR` to set a directory to save the log, model files and evaluation results.  All the config settings are under the configs/config.py.  
 
 ```shell
@@ -84,7 +84,7 @@ We also provide the shell script, so you can also run `bash scripts/car_train.sh
 
 ### Refinement stage
 
-Run following command to prepare pickle files for car training. We use the first stage predicted results. If you don't use the default directory in first stage, you should change the corresponding directory in [here](kitti/prepare_data_refine.py#L911) and [here](kitti/prepare_data_refine.py#L895) before running following commands. The pickle files will be saved in `kitti/data/pickle_data_refine`.  
+Run following command to prepare pickle files for car training. We use the first stage predicted results. If you don't use the default directory in the first stage, you should change the corresponding directory in [here](kitti/prepare_data_refine.py#L888) and [here](kitti/prepare_data_refine.py#L904) before running following commands. The pickle files will be saved in `kitti/data/pickle_data_refine`.  
 
 ```shell
 python kitti/prepare_data_refine.py --car_only --gen_train --gen_val_det --gen_val_rgb_detection
@@ -125,7 +125,7 @@ bev  AP:90.42, 88.99, 86.88
 
 ## Note
 
-Since we update our code from PyTorch-0.3.1 to PyTorch-1.0 and our code uses may random sample operations, the results may be not exactly the same as these reported in our paper.
+Since we update our code from PyTorch-0.3.1 to PyTorch-1.0 and our code uses many random sample operations, the results may be not exactly the same as those reported in our paper.
 But the difference should be +-0.5\%, if you can not get the similar results, please contact me. I am still working to make results stable.
 
 Our code is supported multiple GPUs for training, but now the training is very fast for small dataset, like KITTI, SUN-RGBD. All the steps will finish in one day on single GPU.

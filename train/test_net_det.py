@@ -144,6 +144,7 @@ def write_detection_results_nms(output_dir, det_results, threshold=cfg.TEST.THRE
 
 
 def evaluate_py_wrapper(output_dir, async_eval=False):
+    # official evaluation  
     gt_dir = 'data/kitti/training/label_2/'
     command_line = './train/kitti_eval/evaluate_object_3d_offline %s %s' % (gt_dir, output_dir)
     command_line += ' 2>&1 | tee -a  %s/log_test.txt' % (os.path.join(output_dir))
@@ -157,6 +158,7 @@ def evaluate_py_wrapper(output_dir, async_eval=False):
 
 def evaluate_cuda_wrapper(result_dir, image_set='val', async_eval=False):
     # https://github.com/traveller59/kitti-object-eval-python
+    # Sometime we can not get the same result as official evaluation for car BEV HARD detection (+-6%)
     if cfg.DATA.CAR_ONLY:
         classes_idx = '0'
     elif cfg.DATA.PEOPLE_ONLY:
