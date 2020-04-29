@@ -376,6 +376,12 @@ def from_prediction_to_label_format(center, angle, size, rot_angle, ref_center=N
     ty += h / 2.0
     return h, w, l, tx, ty, tz, ry
 
+def compute_alpha(x, z, ry):
+
+    beta = np.arctan2(z, x)
+    alpha = -np.sign(beta) * np.pi / 2 + beta + ry
+
+    return alpha
 
 def collate_fn(batch):
     return default_collate(batch)
