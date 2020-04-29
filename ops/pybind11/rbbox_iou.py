@@ -1,10 +1,7 @@
 import numpy as np
 
 from . import box_ops_cc
-
-
-# import nms
-
+from . import nms
 
 def bbox_overlaps_1d(ex, gt):
     '''
@@ -273,6 +270,45 @@ def bev_nms_np(dets, nms_thresh, top_k=300):
         order = order[inds + 1]
 
     return keep
+
+
+def rotate_nms_bev_cc(dets, thresh, top_k=300):
+    '''
+    dets: [[cx, cz, l, w, ry, score]] n,6
+    '''
+    assert dets.shape[1] == 6
+    scores = dets[:, 5]
+
+    order = scores.argsort()[::-1].astype(np.int32)  # highest->lowest
+
+    boxes_corners = rbbox2corner(dets[:, :5])
+    boxes_standup = corner2standup(boxes_corners)
+
+    standup_iou = bbox_overlaps_2d(boxes_standup, boxes_standup)
+
+    keep = nms.rotate_non_max_suppression_cpu(boxes_corners, order, standup_iou, thresh)
+
+    return keep[:top_k]
+
+
+def rotate_nms_3d_cc(dets, thresh, top_k=300):
+    '''
+    dets: [[cx, cy, cz, l, w, h, ry, score]] n,8
+
+    '''
+    assert dets.shape[1] == 8
+    scores = dets[:, 7]
+    
+    order = scores.argsort()[::-1].astype(np.int32)  # highest->lowest
+
+    bbox_corner_3d = boxes3d2corners(dets)  # n, 8, 3
+    bbox_standup = np.concatenate([np.min(bbox_corner_3d, 1), np.max(bbox_corner_3d, 1)], 1)  # n, 6
+
+    standup_iou = bbox_overlaps_3d(bbox_standup, bbox_standup)
+
+    keep = nms.rotate_non_max_suppression_3d_cpu(bbox_corner_3d, order, standup_iou, thresh)
+
+    return keep[:top_k]
 
 
 if __name__ == '__main__':

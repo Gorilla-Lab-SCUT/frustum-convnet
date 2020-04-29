@@ -7,5 +7,6 @@ python setup.py clean --all
 cd ..
 
 cd pybind11
+python setup.py clean --all
 rm -f *.so
 
