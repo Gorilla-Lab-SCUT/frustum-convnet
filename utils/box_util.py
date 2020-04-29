@@ -23,7 +23,6 @@ def polygon_clip(subjectPolygon, clipPolygon):
     Return:
       a list of (x,y) vertex point for the intersection polygon.
     """
-
     def inside(p):
         return (cp2[0] - cp1[0]) * (p[1] - cp1[1]) > (cp2[1] - cp1[1]) * (p[0] - cp1[0])
 
@@ -79,9 +78,9 @@ def convex_hull_intersection(p1, p2):
 
 def box3d_vol(corners):
     ''' corners: (8,3) no assumption on axis direction '''
-    a = np.sqrt(np.sum((corners[0, :] - corners[1, :]) ** 2))
-    b = np.sqrt(np.sum((corners[1, :] - corners[2, :]) ** 2))
-    c = np.sqrt(np.sum((corners[0, :] - corners[4, :]) ** 2))
+    a = np.sqrt(np.sum((corners[0, :] - corners[1, :])**2))
+    b = np.sqrt(np.sum((corners[1, :] - corners[2, :])**2))
+    c = np.sqrt(np.sum((corners[0, :] - corners[4, :])**2))
     return a * b * c
 
 
@@ -119,68 +118,36 @@ def box3d_iou(corners1, corners2):
     return iou, iou_2d
 
 
-def get_iou(bb1, bb2):
-    """
-    Calculate the Intersection over Union (IoU) of two 2D bounding boxes.
-
-    Parameters
-    ----------
-    bb1 : dict
-        Keys: {'x1', 'x2', 'y1', 'y2'}
-        The (x1, y1) position is at the top left corner,
-        the (x2, y2) position is at the bottom right corner
-    bb2 : dict
-        Keys: {'x1', 'x2', 'y1', 'y2'}
-        The (x, y) position is at the top left corner,
-        the (x2, y2) position is at the bottom right corner
-
-    Returns
-    -------
-    float
-        in [0, 1]
-    """
-    assert bb1['x1'] < bb1['x2']
-    assert bb1['y1'] < bb1['y2']
-    assert bb2['x1'] < bb2['x2']
-    assert bb2['y1'] < bb2['y2']
-
-    # determine the coordinates of the intersection rectangle
-    x_left = max(bb1['x1'], bb2['x1'])
-    y_top = max(bb1['y1'], bb2['y1'])
-    x_right = min(bb1['x2'], bb2['x2'])
-    y_bottom = min(bb1['y2'], bb2['y2'])
-
-    if x_right < x_left or y_bottom < y_top:
-        return 0.0
-
-    # The intersection of two axis-aligned bounding boxes is always an
-    # axis-aligned bounding box
-    intersection_area = (x_right - x_left) * (y_bottom - y_top)
-
-    # compute the area of both AABBs
-    bb1_area = (bb1['x2'] - bb1['x1']) * (bb1['y2'] - bb1['y1'])
-    bb2_area = (bb2['x2'] - bb2['x1']) * (bb2['y2'] - bb2['y1'])
-
-    # compute the intersection over union by taking the intersection
-    # area and dividing it by the sum of prediction + ground-truth
-    # areas - the interesection area
-    iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
-    assert iou >= 0.0
-    assert iou <= 1.0
-    return iou
-
-
-def box2d_iou(box1, box2):
-    ''' Compute 2D bounding box IoU.
-
+def box3d_iou_pair(corners1, corners2):
+    ''' Compute paired 3D bounding box IoU.
+    /*
+      camera coordinate
+                7 -------- 4
+               /|         /|
+              6 -------- 5 .
+              | |        | |
+              . 3 -------- 0
+              |/         |/
+              2 -------- 1
+     */
     Input:
-        box1: tuple of (xmin,ymin,xmax,ymax)
-        box2: tuple of (xmin,ymin,xmax,ymax)
+        corners1: numpy array (n,8,3), assume up direction is negative Y
+        corners2: numpy array (n,8,3), assume up direction is negative Y
     Output:
-        iou: 2D IoU scalar
+        ious: numpy array (n, 2)
+        [:, 0] BEV box IoU
+        [:, 1] 3D bounding box IoU
     '''
-    return get_iou({'x1': box1[0], 'y1': box1[1], 'x2': box1[2], 'y2': box1[3]}, \
-                   {'x1': box2[0], 'y1': box2[1], 'x2': box2[2], 'y2': box2[3]})
+    # corner points are in counter clockwise order
+    assert len(corners1) == len(corners2), "number of boxes sholud be equal"
+    num_pairs = len(corners1)
+    ious = np.zeros((num_pairs, 2), dtype=corners1.dtype)
+    for i in range(num_pairs):
+        iou_3d, iou_2d = box3d_iou(corners1[i], corners2[i])
+        ious[i, 0] = iou_2d
+        ious[i, 1] = iou_3d
+
+    return ious
 
 
 if __name__ == '__main__':
@@ -191,7 +158,6 @@ if __name__ == '__main__':
     from matplotlib.collections import PatchCollection
     import matplotlib.pyplot as plt
 
-
     def plot_polys(plist, scale=500.0):
         fig, ax = plt.subplots()
         patches = []
@@ -199,12 +165,11 @@ if __name__ == '__main__':
             poly = Polygon(np.array(p) / scale, True)
             patches.append(poly)
 
-
-    pc = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.5)
-    colors = 100 * np.random.rand(len(patches))
-    pc.set_array(np.array(colors))
-    ax.add_collection(pc)
-    plt.show()
+    # pc = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.5)
+    # colors = 100 * np.random.rand(len(patches))
+    # pc.set_array(np.array(colors))
+    # ax.add_collection(pc)
+    # plt.show()
 
     # Demo on ConvexHull
     points = np.random.rand(30, 2)  # 30 random points in 2-D
@@ -230,14 +195,14 @@ if __name__ == '__main__':
         print(poly_area(np.array(inter)[:, 0], np.array(inter)[:, 1]))
 
     print('------------------')
-    rect1 = [(0.30026005199835404, 8.9408694211408424), \
-             (-1.1571105364358421, 9.4686676477075533), \
-             (0.1777082043006144, 13.154404877812102), \
+    rect1 = [(0.30026005199835404, 8.9408694211408424),
+             (-1.1571105364358421, 9.4686676477075533),
+             (0.1777082043006144, 13.154404877812102),
              (1.6350787927348105, 12.626606651245391)]
     rect1 = [rect1[0], rect1[3], rect1[2], rect1[1]]
-    rect2 = [(0.23908745901608636, 8.8551095691132886), \
-             (-1.2771419487733995, 9.4269062966181956), \
-             (0.13138836963152717, 13.161896351296868), \
+    rect2 = [(0.23908745901608636, 8.8551095691132886),
+             (-1.2771419487733995, 9.4269062966181956),
+             (0.13138836963152717, 13.161896351296868),
              (1.647617777421013, 12.590099623791961)]
     rect2 = [rect2[0], rect2[3], rect2[2], rect2[1]]
     plot_polys([rect1, rect2])

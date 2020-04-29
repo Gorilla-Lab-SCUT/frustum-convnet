@@ -36,9 +36,10 @@ from configs.config import assert_and_infer_cfg
 from utils.training_states import TrainingStates
 from utils.utils import get_accuracy, AverageMeter, import_from_file, get_logger
 
-from datasets.provider_sample import from_prediction_to_label_format
+from datasets.provider_sample import from_prediction_to_label_format, compute_alpha
 
-from ops.pybind11.rbbox_iou import cube_nms_np
+from ops.pybind11.rbbox_iou import rotate_nms_3d_cc as cube_nms
+from ops.pybind11.rbbox_iou import rotate_nms_bev_cc as bev_nms
 
 
 def parse_args():
@@ -88,12 +89,14 @@ def write_detection_results(output_dir, det_results):
         for class_type in det_results[idx]:
             dets = det_results[idx][class_type]
             for i in range(len(dets)):
-                output_str = class_type + " -1 -1 -10 "
                 box2d = dets[i][:4]
-                output_str += "%f %f %f %f " % (box2d[0], box2d[1], box2d[2], box2d[3])
                 tx, ty, tz, h, w, l, ry = dets[i][4:-1]
                 score = dets[i][-1]
-                output_str += "%f %f %f %f %f %f %f %f" % (h, w, l, tx, ty, tz, ry, score)
+                alpha = compute_alpha(tx, tz, ry)
+                output_str = class_type + " -1 -1 "
+                output_str += '%.4f ' % alpha
+                output_str += "%.4f %.4f %.4f %.4f " % (box2d[0], box2d[1], box2d[2], box2d[3])
+                output_str += "%.4f %.4f %.4f %.4f %.4f %.4f %.4f %f" % (h, w, l, tx, ty, tz, ry, score)
                 if idx not in results:
                     results[idx] = []
                 results[idx].append(output_str)
@@ -117,7 +120,7 @@ def write_detection_results(output_dir, det_results):
     fill_files(result_dir, to_fill_filename_list)
 
 
-def write_detection_results_nms(output_dir, det_results, threshold=cfg.TEST.THRESH):
+def write_detection_results_nms(output_dir, det_results, threshold):
 
     nms_results = {}
     for idx in det_results:
@@ -128,9 +131,15 @@ def write_detection_results_nms(output_dir, det_results, threshold=cfg.TEST.THRE
             # print(len(scores), len(keep))
             # dets = dets[keep]
             if len(dets) > 1:
+                # (tx, ty, tz, h, w, l, ry, score) -> (tx, ty, tz, l, w, h, ry, score)
                 dets_for_nms = dets[:, 4:][:, [0, 1, 2, 5, 4, 3, 6, 7]]
-                keep = cube_nms_np(dets_for_nms, threshold)
-                # print(len(dets_for_nms), len(keep))
+                # keep = cube_nms(dets_for_nms, threshold)
+                keep = cube_nms(dets_for_nms, threshold)
+                # (tx, ty, tz, h, w, l, ry, score) -> (tx, tz, l, w, ry, score)
+                # dets_for_bev_nms = dets[:, 4:][:, [0, 2, 5, 4, 6, 7]]
+                # keep = bev_nms_np(dets_for_bev_nms, threshold)
+                # keep = rotate_nms_bev_cc(dets_for_bev_nms, threshold)
+
                 dets_keep = dets[keep]
             else:
                 dets_keep = dets
@@ -144,7 +153,7 @@ def write_detection_results_nms(output_dir, det_results, threshold=cfg.TEST.THRE
 
 
 def evaluate_py_wrapper(output_dir, async_eval=False):
-    # official evaluation  
+    # official evaluation
     gt_dir = 'data/kitti/training/label_2/'
     command_line = './train/kitti_eval/evaluate_object_3d_offline %s %s' % (gt_dir, output_dir)
     command_line += ' 2>&1 | tee -a  %s/log_test.txt' % (os.path.join(output_dir))
@@ -274,6 +283,9 @@ def test(model, test_dataset, test_loader, output_filename, result_dir=None):
                 score = single_scores[n]
                 h, w, l, tx, ty, tz, ry = from_prediction_to_label_format(
                     single_centers[n], single_headings[n], single_sizes[n], rot_angle, ref_center)
+                # filter out too small object, although it is impossible  in most casts
+                if h < 0.01 or w < 0.01 or l < 0.01:
+                    continue
                 output = [x1, y1, x2, y2, tx, ty, tz, h, w, l, ry, score]
                 det_results[data_idx][class_type].append(output)
 
@@ -287,7 +299,7 @@ def test(model, test_dataset, test_loader, output_filename, result_dir=None):
     # Write detection results for KITTI evaluation
 
     if cfg.TEST.METHOD == 'nms':
-        write_detection_results_nms(result_dir, det_results)
+        write_detection_results_nms(result_dir, det_results, threshold=cfg.TEST.THRESH)
     else:
         write_detection_results(result_dir, det_results)
 
@@ -356,7 +368,8 @@ if __name__ == '__main__':
         collate_fn=collate_fn)
 
     input_channels = 3 if not cfg.DATA.WITH_EXTRA_FEAT else 4
-    NUM_VEC = 0 if cfg.DATA.CAR_ONLY else 3
+    # NUM_VEC = 0 if cfg.DATA.CAR_ONLY else 3
+    NUM_VEC = 3
     NUM_CLASSES = cfg.MODEL.NUM_CLASSES
 
     model = model_def(input_channels, num_vec=NUM_VEC, num_classes=NUM_CLASSES)

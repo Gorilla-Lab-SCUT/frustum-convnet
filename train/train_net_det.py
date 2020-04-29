@@ -293,7 +293,8 @@ def main():
     model_def = model_def.PointNetDet
 
     input_channels = 3 if not cfg.DATA.WITH_EXTRA_FEAT else 4
-    NUM_VEC = 0 if cfg.DATA.CAR_ONLY else 3
+    # NUM_VEC = 0 if cfg.DATA.CAR_ONLY else 3
+    NUM_VEC = 3
     NUM_CLASSES = cfg.MODEL.NUM_CLASSES
 
     model = model_def(input_channels, num_vec=NUM_VEC, num_classes=NUM_CLASSES)
@@ -378,7 +379,7 @@ def main():
 
         save_data = {
             'epoch': n + 1,
-            'state_dict': model.state_dict(),
+            'state_dict': model.state_dict() if cfg.NUM_GPUS == 1 else model.module.state_dict(),
             'optimizer': optimizer.state_dict(),
             'best_prec1': best_prec1,
             'best_epoch': best_epoch
@@ -388,6 +389,9 @@ def main():
 
         if is_best:
             torch.save(save_data, os.path.join(cfg.OUTPUT_DIR, 'model_best.pth'))
+            
+        if (n + 1) == MAX_EPOCH:
+            torch.save(save_data, os.path.join(cfg.OUTPUT_DIR, 'model_final.pth'))
 
     logging.info('Best model {:04d}, Validation Accuracy {:.6f}'.format(best_epoch, best_prec1))
 

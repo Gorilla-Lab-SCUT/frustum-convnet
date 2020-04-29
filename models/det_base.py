@@ -24,6 +24,9 @@ from models.common import softmax_focal_loss_ignore, get_accuracy
 
 from ops.query_depth_point.query_depth_point import QueryDepthPoint
 from ops.pybind11.box_ops_cc import rbbox_iou_3d_pair
+
+# from utils.box_util import box3d_iou_pair # slow, not recommend
+
 from models.box_transform import size_decode, size_encode, center_decode, center_encode, angle_decode, angle_encode
 
 
@@ -143,6 +146,7 @@ class PointNetFeat(nn.Module):
         feat4, _ = torch.max(feat4, -1)
 
         if one_hot_vec is not None:
+            assert self.num_vec == one_hot_vec.shape[1]
             one_hot = one_hot_vec.unsqueeze(-1).expand(-1, -1, feat1.shape[-1])
             feat1 = torch.cat([feat1, one_hot], 1)
 
@@ -228,8 +232,8 @@ class PointNetDet(nn.Module):
     def __init__(self, input_channel=3, num_vec=0, num_classes=2):
         super(PointNetDet, self).__init__()
 
-        self.feat_net = PointNetFeat(input_channel, 0)
-        self.conv_net = ConvFeatNet()
+        self.feat_net = PointNetFeat(input_channel, num_vec)
+        self.conv_net = ConvFeatNet(128, num_vec)
 
         self.num_classes = num_classes
 
@@ -383,7 +387,7 @@ class PointNetDet(nn.Module):
 
             center_preds = center_boxnet + center_ref2
 
-            heading_preds = angle_decode(heading_res_norm, heading_pred_label)
+            heading_preds = angle_decode(heading_res_norm, heading_pred_label, num_bins=self.num_bins)
             size_preds = size_decode(size_res_norm, mean_size_array, size_pred_label)
 
             # corner_preds = get_box3d_corners_helper(center_preds, heading_preds, size_preds)
@@ -422,14 +426,13 @@ class PointNetDet(nn.Module):
 
         # encode regression targets
         center_gt_offsets = center_encode(center_label, center_ref2)
-        heading_class_label, heading_res_norm_label = angle_encode(heading_label)
+        heading_class_label, heading_res_norm_label = angle_encode(heading_label, num_bins=self.num_bins)
         size_res_label_norm = size_encode(size_label, mean_size_array, size_class_label)
 
         # loss calculation
 
         # center_loss
         center_loss = self.get_center_loss(center_boxnet, center_gt_offsets)
-
 
         # heading loss
         heading_class_loss, heading_res_norm_loss = self.get_heading_loss(
@@ -441,7 +444,7 @@ class PointNetDet(nn.Module):
 
         # corner loss regulation
         center_preds = center_decode(center_ref2, center_boxnet)
-        heading = angle_decode(heading_res_norm, heading_class_label)
+        heading = angle_decode(heading_res_norm, heading_class_label, num_bins=self.num_bins)
         size = size_decode(size_res_norm, mean_size_array, size_class_label)
 
         corners_loss, corner_gts = self.get_corner_loss(
@@ -467,7 +470,7 @@ class PointNetDet(nn.Module):
         with torch.no_grad():
 
             # accuracy
-            cls_prec = get_accuracy(cls_probs, cls_label.view(-1))
+            cls_prec = get_accuracy(cls_probs, cls_label.view(-1), ignore=-1)
             heading_prec = get_accuracy(heading_probs, heading_class_label.view(-1))
             size_prec = get_accuracy(size_probs, size_class_label.view(-1))
 
@@ -475,7 +478,7 @@ class PointNetDet(nn.Module):
             heading_pred_label = torch.argmax(heading_probs, -1)
             size_pred_label = torch.argmax(size_probs, -1)
 
-            heading_preds = angle_decode(heading_res_norm, heading_pred_label)
+            heading_preds = angle_decode(heading_res_norm, heading_pred_label, num_bins=self.num_bins)
             size_preds = size_decode(size_res_norm, mean_size_array, size_pred_label)
 
             corner_preds = get_box3d_corners_helper(center_preds, heading_preds, size_preds)
