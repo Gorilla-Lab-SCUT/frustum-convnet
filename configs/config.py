@@ -119,6 +119,10 @@ __C.TEST.DATASET = 'val'
 
 __C.DATA = AttrDict()
 
+__C.DATA.DATASET_NAME = 'KITTI'
+
+__C.DATA.MAX_DEPTH = 70
+
 __C.DATA.FILE = ''
 
 __C.DATA.DATA_ROOT = 'kitti'

@@ -17,8 +17,10 @@ MODEL:
 TEST:
   BATCH_SIZE: 32
   METHOD: nms
-  
+
 DATA:
+  DATASET_NAME: KITTI # config in datasets/dataset_info.py
+  MAX_DEPTH: 70
   FILE: datasets/provider_sample.py
   DATA_ROOT: kitti/data/pickle_data
   CAR_ONLY: True

@@ -19,6 +19,7 @@ TEST:
   METHOD: nms
 
 DATA:
+  DATASET_NAME: KITTI # config in datasets/dataset_info.py
   FILE: datasets/provider_sample_refine.py
   DATA_ROOT: kitti/data/pickle_data_refine
   CAR_ONLY: True
@@ -29,7 +30,7 @@ DATA:
   HEIGHT_HALF: (0.1, 0.2, 0.4, 0.8)
   EXTEND_FROM_DET: False
 
-    
+
 RESUME: False
 NUM_GPUS: 1
 OUTPUT_DIR: 'output/car_train_refine'

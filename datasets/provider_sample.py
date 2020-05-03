@@ -30,7 +30,8 @@ if ROOT_DIR not in sys.path:
 from configs.config import cfg
 
 from datasets.data_utils import rotate_pc_along_y, project_image_to_rect, compute_box_3d, extract_pc_in_box3d, roty
-from datasets.dataset_info import KITTICategory
+# from datasets.dataset_info import KITTICategory
+from datasets.dataset_info import DATASET_INFO
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,10 @@ class ProviderDataset(Dataset):
 
         self.one_hot = one_hot
         self.from_rgb_detection = from_rgb_detection
+
+        dataset_name = cfg.DATA.DATASET_NAME
+        assert dataset_name in DATASET_INFO
+        self.category_info = DATASET_INFO[dataset_name]
 
         root_data = cfg.DATA.DATA_ROOT
         car_only = cfg.DATA.CAR_ONLY
@@ -135,8 +140,11 @@ class ProviderDataset(Dataset):
         rot_angle = self.get_center_view_rot_angle(index)
 
         cls_type = self.type_list[index]
-        assert cls_type in KITTICategory.CLASSES, cls_type
-        size_class = KITTICategory.CLASSES.index(cls_type)
+        # assert cls_type in KITTICategory.CLASSES, cls_type
+        # size_class = KITTICategory.CLASSES.index(cls_type)
+
+        assert cls_type in self.category_info.CLASSES, '%s not in category_info' % cls_type
+        size_class = self.category_info.CLASSES.index(cls_type)
 
         # Compute one hot vector
         if self.one_hot:
@@ -227,10 +235,11 @@ class ProviderDataset(Dataset):
                 ref4[:, 0] *= -1
 
         if self.random_shift:
+            max_depth = cfg.DATA.MAX_DEPTH
             l, w, h = self.size_list[index]
             dist = np.sqrt(np.sum(l ** 2 + w ** 2))
             shift = np.clip(np.random.randn() * dist * 0.2, -0.5 * dist, 0.5 * dist)
-            shift = np.clip(shift + box3d_center[2], 0, 70) - box3d_center[2]
+            shift = np.clip(shift + box3d_center[2], 0, max_depth) - box3d_center[2]
             point_set[:, 2] += shift
             box3d_center[2] += shift
 
@@ -406,7 +415,7 @@ if __name__ == '__main__':
         dataset, batch_size=4, shuffle=False, num_workers=4, pin_memory=True, drop_last=True)
     tic = time.time()
     for i, data_dict in enumerate(train_loader):
-       
+
         # for key, value in data_dict.items():
         #     print(key, value.shape)
 

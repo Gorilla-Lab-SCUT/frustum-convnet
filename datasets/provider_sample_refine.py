@@ -30,14 +30,15 @@ if ROOT_DIR not in sys.path:
 from configs.config import cfg
 
 from datasets.data_utils import rotate_pc_along_y, extract_pc_in_box3d, compute_box_3d, roty, project_image_to_rect
-from datasets.dataset_info import KITTICategory
+# from datasets.dataset_info import KITTICategory
+from datasets.dataset_info import DATASET_INFO
 
 logger = logging.getLogger(__name__)
 
 class ProviderDataset(Dataset):
 
     def __init__(self, npoints, split,
-                 random_flip=False, random_shift=False, 
+                 random_flip=False, random_shift=False,
                  one_hot=True,
                  from_rgb_detection=False,
                  overwritten_data_path='',
@@ -52,6 +53,10 @@ class ProviderDataset(Dataset):
         self.one_hot = one_hot
         self.from_rgb_detection = from_rgb_detection
 
+        dataset_name = cfg.DATA.DATASET_NAME
+        assert dataset_name in DATASET_INFO
+        self.category_info = DATASET_INFO[dataset_name]
+
         root_data = cfg.DATA.DATA_ROOT
         car_only = cfg.DATA.CAR_ONLY
         people_only = cfg.DATA.PEOPLE_ONLY
@@ -60,7 +65,7 @@ class ProviderDataset(Dataset):
             if not from_rgb_detection:
                 if split == 'val':
                     split += '_det'
-                    
+
                 if car_only:
                     overwritten_data_path = os.path.join(root_data, 'frustum_caronly_%s.pickle' % (split))
                 elif people_only:
@@ -179,8 +184,11 @@ class ProviderDataset(Dataset):
         pred_box3d_size = self.pred_box3d_size_list[index].copy()
 
         cls_type = self.type_list[index]
-        assert cls_type in KITTICategory.CLASSES, cls_type
-        size_class = KITTICategory.CLASSES.index(cls_type)
+        # assert cls_type in KITTICategory.CLASSES, cls_type
+        # size_class = KITTICategory.CLASSES.index(cls_type)
+
+        assert cls_type in self.category_info.CLASSES, '%s not in category_info' % cls_type
+        size_class = self.category_info.CLASSES.index(cls_type)
 
         # Compute one hot vector
         if self.one_hot:
@@ -451,7 +459,7 @@ if __name__ == '__main__':
         dataset, batch_size=4, shuffle=False, num_workers=4, pin_memory=True, drop_last=True)
     tic = time.time()
     for i, data_dict in enumerate(train_loader):
-       
+
         # for key, value in data_dict.items():
         #     print(key, value.shape)
 

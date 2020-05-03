@@ -37,7 +37,10 @@ from utils.training_states import TrainingStates
 from utils.utils import get_accuracy, AverageMeter, import_from_file, get_logger
 
 from datasets.provider_sample import from_prediction_to_label_format, compute_alpha
+from datasets.dataset_info import DATASET_INFO
 
+from ops.pybind11.rbbox_iou import cube_nms_np
+from ops.pybind11.rbbox_iou import bev_nms_np
 from ops.pybind11.rbbox_iou import rotate_nms_3d_cc as cube_nms
 from ops.pybind11.rbbox_iou import rotate_nms_bev_cc as bev_nms
 
@@ -133,20 +136,17 @@ def write_detection_results_nms(output_dir, det_results, threshold):
             if len(dets) > 1:
                 # (tx, ty, tz, h, w, l, ry, score) -> (tx, ty, tz, l, w, h, ry, score)
                 dets_for_nms = dets[:, 4:][:, [0, 1, 2, 5, 4, 3, 6, 7]]
-                # keep = cube_nms(dets_for_nms, threshold)
+                # keep = cube_nms_np(dets_for_nms, threshold)
                 keep = cube_nms(dets_for_nms, threshold)
                 # (tx, ty, tz, h, w, l, ry, score) -> (tx, tz, l, w, ry, score)
                 # dets_for_bev_nms = dets[:, 4:][:, [0, 2, 5, 4, 6, 7]]
                 # keep = bev_nms_np(dets_for_bev_nms, threshold)
-                # keep = rotate_nms_bev_cc(dets_for_bev_nms, threshold)
-
+                # keep = bev_nms(dets_for_bev_nms, threshold)
                 dets_keep = dets[keep]
             else:
                 dets_keep = dets
             if idx not in nms_results:
                 nms_results[idx] = {}
-            # if class_type not in nms_results[idx]:
-            #     nms_results[idx][class_type] = []
             nms_results[idx][class_type] = dets_keep
 
     write_detection_results(output_dir, nms_results)
@@ -369,13 +369,14 @@ if __name__ == '__main__':
 
     input_channels = 3 if not cfg.DATA.WITH_EXTRA_FEAT else 4
     # NUM_VEC = 0 if cfg.DATA.CAR_ONLY else 3
-    NUM_VEC = 3
+    # NUM_VEC = 3
+    dataset_name = cfg.DATA.DATASET_NAME
+    assert dataset_name in DATASET_INFO
+    datset_category_info = DATASET_INFO[dataset_name]
+    NUM_VEC = len(datset_category_info.CLASSES) # rgb category as extra feature vector
     NUM_CLASSES = cfg.MODEL.NUM_CLASSES
 
     model = model_def(input_channels, num_vec=NUM_VEC, num_classes=NUM_CLASSES)
-
-    if cfg.NUM_GPUS > 1:
-        model = torch.nn.DataParallel(model)
 
     model = model.cuda()
 
@@ -393,6 +394,9 @@ if __name__ == '__main__':
     else:
         logging.error("=> no checkpoint found at '{}'".format(cfg.TEST.WEIGHTS))
         assert False
+
+    if cfg.NUM_GPUS > 1:
+        model = torch.nn.DataParallel(model)
 
     save_file_name = os.path.join(SAVE_DIR, 'detection.pkl')
     result_folder = os.path.join(SAVE_DIR, 'result')

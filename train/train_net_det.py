@@ -35,6 +35,7 @@ from configs.config import assert_and_infer_cfg
 from utils.training_states import TrainingStates
 from utils.utils import get_accuracy, AverageMeter, import_from_file, get_logger
 
+from datasets.dataset_info import DATASET_INFO
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -129,7 +130,7 @@ def train(data_loader, model, optimizer, lr_scheduler, epoch, logger=None):
         # mean for multi-gpu setting
         losses_reduce = {key: value.detach().mean().item() for key, value in losses.items()}
         metrics_reduce = {key: value.detach().mean().item() for key, value in metrics.items()}
-    
+
         training_states.update_states(dict(**losses_reduce, **metrics_reduce), batch_size)
 
         batch_time_meter.update(time.time() - tic)
@@ -283,7 +284,7 @@ def main():
         pin_memory=True,
         drop_last=False,
         collate_fn=collate_fn)
-    
+
 
     logging.info('training: sample {} / batch {} '.format(len(train_dataset), len(train_loader)))
     logging.info('validation: sample {} / batch {} '.format(len(val_dataset), len(val_loader)))
@@ -294,7 +295,10 @@ def main():
 
     input_channels = 3 if not cfg.DATA.WITH_EXTRA_FEAT else 4
     # NUM_VEC = 0 if cfg.DATA.CAR_ONLY else 3
-    NUM_VEC = 3
+    dataset_name = cfg.DATA.DATASET_NAME
+    assert dataset_name in DATASET_INFO
+    datset_category_info = DATASET_INFO[dataset_name]
+    NUM_VEC = len(datset_category_info.CLASSES) # rgb category as extra feature vector
     NUM_CLASSES = cfg.MODEL.NUM_CLASSES
 
     model = model_def(input_channels, num_vec=NUM_VEC, num_classes=NUM_CLASSES)
@@ -389,7 +393,7 @@ def main():
 
         if is_best:
             torch.save(save_data, os.path.join(cfg.OUTPUT_DIR, 'model_best.pth'))
-            
+
         if (n + 1) == MAX_EPOCH:
             torch.save(save_data, os.path.join(cfg.OUTPUT_DIR, 'model_final.pth'))
 

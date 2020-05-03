@@ -28,10 +28,7 @@ from ops.pybind11.box_ops_cc import rbbox_iou_3d_pair
 # from utils.box_util import box3d_iou_pair # slow, not recommend
 
 from models.box_transform import size_decode, size_encode, center_decode, center_encode, angle_decode, angle_encode
-
-
-NUM_SIZE_CLUSTER = len(KITTICategory.CLASSES)
-MEAN_SIZE_ARRAY = KITTICategory.MEAN_SIZE_ARRAY
+from datasets.dataset_info import DATASET_INFO
 
 
 # single scale PointNet module
@@ -232,6 +229,14 @@ class PointNetDet(nn.Module):
     def __init__(self, input_channel=3, num_vec=0, num_classes=2):
         super(PointNetDet, self).__init__()
 
+
+        dataset_name = cfg.DATA.DATASET_NAME
+        assert dataset_name in DATASET_INFO
+        self.category_info = DATASET_INFO[dataset_name]
+
+        self.num_size_cluster = len(self.category_info.CLASSES)
+        self.mean_size_array = self.category_info.MEAN_SIZE_ARRAY
+
         self.feat_net = PointNetFeat(input_channel, num_vec)
         self.conv_net = ConvFeatNet(128, num_vec)
 
@@ -240,7 +245,7 @@ class PointNetDet(nn.Module):
         num_bins = cfg.DATA.NUM_HEADING_BIN
         self.num_bins = num_bins
 
-        output_size = 3 + num_bins * 2 + NUM_SIZE_CLUSTER * 4
+        output_size = 3 + num_bins * 2 + self.num_size_cluster * 4
 
         self.reg_out = nn.Conv1d(768, output_size, 1)
         self.cls_out = nn.Conv1d(768, 2, 1)
@@ -257,6 +262,7 @@ class PointNetDet(nn.Module):
         batch_size = output.shape[0]
 
         num_bins = self.num_bins
+        num_sizes = self.num_size_cluster
 
         center = output[:, 0:3].contiguous()
 
@@ -264,10 +270,10 @@ class PointNetDet(nn.Module):
 
         heading_res_norm = output[:, 3 + num_bins:3 + num_bins * 2].contiguous()
 
-        size_scores = output[:, 3 + num_bins * 2:3 + num_bins * 2 + NUM_SIZE_CLUSTER].contiguous()
+        size_scores = output[:, 3 + num_bins * 2:3 + num_bins * 2 + num_sizes].contiguous()
 
-        size_res_norm = output[:, 3 + num_bins * 2 + NUM_SIZE_CLUSTER:].contiguous()
-        size_res_norm = size_res_norm.view(batch_size, NUM_SIZE_CLUSTER, 3)
+        size_res_norm = output[:, 3 + num_bins * 2 + num_sizes:].contiguous()
+        size_res_norm = size_res_norm.view(batch_size, num_sizes, 3)
 
         return center, heading_scores, heading_res_norm, size_scores, size_res_norm
 
@@ -348,7 +354,7 @@ class PointNetDet(nn.Module):
         else:
             object_point_cloud_i = None
 
-        mean_size_array = torch.from_numpy(MEAN_SIZE_ARRAY).type_as(point_cloud)
+        mean_size_array = torch.from_numpy(self.mean_size_array).type_as(point_cloud)
 
         feat1, feat2, feat3, feat4 = self.feat_net(
             object_point_cloud_xyz,
