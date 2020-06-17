@@ -291,11 +291,12 @@ class ProviderDataset(Dataset):
     def generate_ref(self, box, P):
 
         s1, s2, s3, s4 = cfg.DATA.STRIDE
+        max_depth = cfg.DATA.MAX_DEPTH
 
-        z1 = np.arange(0, 70, s1) + s1 / 2.
-        z2 = np.arange(0, 70, s2) + s2 / 2.
-        z3 = np.arange(0, 70, s3) + s3 / 2.
-        z4 = np.arange(0, 70, s4) + s4 / 2.
+        z1 = np.arange(0, max_depth, s1) + s1 / 2.
+        z2 = np.arange(0, max_depth, s2) + s2 / 2.
+        z3 = np.arange(0, max_depth, s3) + s3 / 2.
+        z4 = np.arange(0, max_depth, s4) + s4 / 2.
 
         cx, cy = (box[0] + box[2]) / 2., (box[1] + box[3]) / 2.,
 
