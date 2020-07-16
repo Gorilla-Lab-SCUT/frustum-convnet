@@ -1,0 +1,40 @@
+TRAIN:
+  BATCH_SIZE: 32
+  START_EPOCH: 0
+  MAX_EPOCH: 50
+  OPTIMIZER: adam
+  BASE_LR: 0.001
+  MIN_LR: 1e-5
+  GAMMA: 0.1
+  LR_STEPS: [20]
+  MOMENTUM: 0.9
+  WEIGHT_DECAY: 0.0001
+
+MODEL:
+  FILE: models/det_base.py
+  NUM_CLASSES: 2
+
+TEST:
+  BATCH_SIZE: 32
+  METHOD: nms
+
+DATA:
+  FILE: datasets/provider_sample.py
+  DATA_ROOT: kitti/data/pickle_data
+  CAR_ONLY: False
+  PEOPLE_ONLY: True
+  RTC: True
+  WITH_EXTRA_FEAT: False
+  NUM_SAMPLES: 1024
+  STRIDE: (0.1, 0.2, 0.4, 0.8)
+  HEIGHT_HALF: (0.1, 0.2, 0.4, 0.8)
+
+RESUME: False
+NUM_GPUS: 1
+OUTPUT_DIR: 'output/people_train'
+SAVE_SUB_DIR: 'val_nms'
+USE_TFBOARD: True
+NUM_WORKERS: 4
+FROM_RGB_DET: True
+disp: 50
+IOU_THRESH: 0.5
