@@ -53,7 +53,7 @@ def extract_pc_in_box2d(pc, box2d):
 
 
 def random_shift_box2d(box2d, img_height, img_width, shift_ratio=0.1):
-    ''' Randomly shift box center, randomly scale width and height 
+    ''' Randomly shift box center, randomly scale width and height
     '''
     r = shift_ratio
     xmin, ymin, xmax, ymax = box2d
@@ -390,14 +390,13 @@ def extract_frustum_data(idx_filename, split, output_filename,
 
     print('save in {}'.format(output_filename))
 
-   
+
 
 def get_box3d_dim_statistics(idx_filename):
-    ''' Collect and dump 3D bounding box statistics '''
+    ''' Collect 3D bounding box statistics '''
     dataset = kitti_object(os.path.join(ROOT_DIR, 'data/kitti'))
     dimension_list = []
     type_list = []
-    ry_list = []
     data_idx_list = [int(line.rstrip()) for line in open(idx_filename)]
     for data_idx in data_idx_list:
         print('------------- ', data_idx)
@@ -409,17 +408,26 @@ def get_box3d_dim_statistics(idx_filename):
                 continue
             dimension_list.append(np.array([obj.l, obj.w, obj.h]))
             type_list.append(obj.type)
-            ry_list.append(obj.ry)
 
-    with open('box3d_dimensions.pickle', 'wb') as fp:
-        pickle.dump(type_list, fp)
-        pickle.dump(dimension_list, fp)
-        pickle.dump(ry_list, fp)
+    print("number of objects: {} ".format(len(type_list)))
+    print("categories:", set(type_list))
+
+    # Get average box size for different categories
+    for class_type in sorted(set(type_list)):
+        box3d_list = []
+        for i in range(len(dimension_list)):
+            if type_list[i] == class_type:
+                box3d_list.append(dimension_list[i])
+
+        # m_box3d = np.median(box3d_list, 0)
+        m_box3d = np.mean(box3d_list, 0)
+        print("\'%s\': np.array([%f,%f,%f])," %
+              (class_type, m_box3d[0], m_box3d[1], m_box3d[2]))
 
 
 def read_det_file(det_filename):
     ''' Parse lines in 2D detection output files '''
-    det_id2str = {1: 'Pedestrian', 2: 'Car', 3: 'Cyclist'}
+    det_id2str = {1: 'Pedestrian', 2: 'Car', 3: 'Cyclist'} # default definition in rgb_detection_train/val.txt by rqi
     id_list = []
     type_list = []
     prob_list = []
@@ -427,7 +435,12 @@ def read_det_file(det_filename):
     for line in open(det_filename, 'r'):
         t = line.rstrip().split(" ")
         id_list.append(int(os.path.basename(t[0]).rstrip('.png')))
-        type_list.append(det_id2str[int(t[1])])
+        try:
+            cls_type = det_id2str[int(t[1])]
+        except ValueError:
+            assert t[1] in det_id2str.values()
+            cls_type = t[1]
+        type_list.append(cls_type)
         prob_list.append(float(t[2]))
         box2d_list.append(np.array([float(t[i]) for i in range(3, 7)]))
     return id_list, type_list, box2d_list, prob_list
@@ -541,7 +554,7 @@ def extract_frustum_data_rgb_detection(det_filename, split, output_filename,
         input_list.append(pc_in_box_fov.astype(np.float32, copy=False))
         frustum_angle_list.append(frustum_angle)
         calib_list.append(calib.calib_dict)
-    
+
     with open(output_filename, 'wb') as fp:
         pickle.dump(id_list, fp, -1)
         pickle.dump(box2d_list, fp, -1)
@@ -553,11 +566,11 @@ def extract_frustum_data_rgb_detection(det_filename, split, output_filename,
 
     print('total_objects %d' % len(id_list))
     print('save in {}'.format(output_filename))
-   
+
 
 def write_2d_rgb_detection(det_filename, split, result_dir):
     ''' Write 2D detection results for KITTI evaluation.
-        Convert from Wei's format to KITTI format. 
+        Convert from Wei's format to KITTI format.
 
     Input:
         det_filename: string, each line is
@@ -610,13 +623,25 @@ if __name__ == '__main__':
     parser.add_argument('--gen_val_rgb_detection', action='store_true',
                         help='Generate val split frustum data with RGB detection 2D boxes')
 
+    parser.add_argument('--gen_trainval', action='store_true',
+                        help='Generate trainval split frustum data with perturbed GT 2D boxes')
+
+    parser.add_argument('--gen_test_rgb_detection', action='store_true',
+                        help='Generate test split frustum data with RGB detection 2D boxes')
+
     parser.add_argument('--car_only', action='store_true', help='Only generate cars')
     parser.add_argument('--people_only', action='store_true', help='Only generate peds and cycs')
     parser.add_argument('--save_dir', default=None, type=str, help='data directory to save data')
 
+    parser.add_argument('--gen_avg_dim', action='store_true', help='get average dimension of each class')
+
+
     args = parser.parse_args()
 
     np.random.seed(3)
+
+    if args.gen_avg_dim:
+        get_box3d_dim_statistics(os.path.join(BASE_DIR, 'image_sets/train.txt'),)
 
     if args.save_dir is None:
         save_dir = 'kitti/data/pickle_data'

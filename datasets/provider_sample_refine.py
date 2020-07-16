@@ -192,7 +192,7 @@ class ProviderDataset(Dataset):
 
         # Compute one hot vector
         if self.one_hot:
-            one_hot_vec = np.zeros((3))
+            one_hot_vec = np.zeros((len(self.category_info.CLASSES)))
             one_hot_vec[size_class] = 1
 
         if rotate_to_center:
@@ -292,7 +292,7 @@ class ProviderDataset(Dataset):
 
         data_inputs = {
             'point_cloud': np.transpose(point_set, (1, 0)).astype(np.float32),
-            'label': labels.astype(np.int64),
+            'cls_label': labels.astype(np.int64),
             'box3d_center': box3d_center.astype(np.float32),
             'box3d_heading': np.array([heading_angle], dtype=np.float32),
             'box3d_size': box3d_size.astype(np.float32),
@@ -388,12 +388,12 @@ class ProviderDataset(Dataset):
 def collate_fn(batch):
     # TODO improve compatibility
     bs = len(batch)
-    names = ['center_ref1', 'center_ref2', 'center_ref3', 'center_ref4', 'label']
+    names = ['center_ref1', 'center_ref2', 'center_ref3', 'center_ref4', 'cls_label']
     max_l = dict(zip(names, [0] * len(names)))
     for i in range(bs):
         for k in names:
             if k in batch[i]:
-                if k == 'label':
+                if k == 'cls_label':
                     assert batch[i][k].ndim == 1
                     length = batch[i][k].shape[0]
                 else:
@@ -404,7 +404,7 @@ def collate_fn(batch):
     for i in range(bs):
         for k in names:
             if k in batch[i]:
-                if k == 'label':
+                if k == 'cls_label':
                     assert batch[i][k].ndim == 1
                     length = batch[i][k].shape[0]
                     if length < max_l[k]:

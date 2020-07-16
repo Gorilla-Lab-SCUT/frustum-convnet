@@ -130,6 +130,9 @@ __C.DATA.DATA_ROOT = 'kitti'
 # intensity for kitti, rgb for sunrgbd
 __C.DATA.WITH_EXTRA_FEAT = True
 
+# 1 for KITTI 3 and for sunrgbd if WITH_EXTRA_FEAT is True
+__C.DATA.EXTRA_FEAT_DIM = 1
+
 __C.DATA.NUM_SAMPLES = 1024
 
 __C.DATA.NUM_SAMPLES_DET = 512

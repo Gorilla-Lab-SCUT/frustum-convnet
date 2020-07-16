@@ -1,0 +1,52 @@
+TRAIN:
+  BATCH_SIZE: 32
+  START_EPOCH: 0
+  MAX_EPOCH: 50
+  OPTIMIZER: adam
+  BASE_LR: 0.001
+  MIN_LR: 1e-5
+  GAMMA: 0.1
+  LR_STEPS: [20]
+  MOMENTUM: 0.9
+  WEIGHT_DECAY: 0.0000
+
+MODEL:
+  FILE: models/det_base_sunrgbd.py
+  NUM_CLASSES: 2
+
+TEST:
+  BATCH_SIZE: 32
+  METHOD: top
+
+DATA:
+  DATASET_NAME: SUNRGBD # config in datasets/dataset_info.py
+  MAX_DEPTH: 8
+  FILE: datasets/provider_sample_sunrgbd.py
+  DATA_ROOT: './sunrgbd/data/pickle_data'
+  CAR_ONLY: False
+  PEOPLE_ONLY: False
+  RTC: True
+  WITH_EXTRA_FEAT: False
+  EXTRA_FEAT_DIM: 3 # valid when WITH_EXTRA_FEAT is True
+  NUM_SAMPLES: 2048
+  STRIDE: (0.1, 0.2, 0.4, 0.8, 1.6)
+  HEIGHT_HALF: (0.1, 0.2, 0.4, 0.8, 1.6)
+
+# LOSS:
+#   BOX_LOSS_WEIGHT: 0.1 # 1
+#   CORNER_LOSS_WEIGHT: 10.
+#   HEAD_REG_WEIGHT: 20.
+#   SIZE_REG_WEIGHT: 20.
+#   CONF_LOSS_WEIGHT: 10.
+
+RESUME: False
+NUM_GPUS: 1
+OUTPUT_DIR: '/tmp'
+SAVE_SUB_DIR: 'test'
+USE_TFBOARD: True
+NUM_WORKERS: 4
+FROM_RGB_DET: True
+OVER_WRITE_TEST_FILE: './sunrgbd/data/pickle_data/sunrgbd_rgb_det_val.pickle'
+
+disp: 100
+IOU_THRESH: 0.25

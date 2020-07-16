@@ -293,7 +293,7 @@ def main():
     model_def = import_from_file(cfg.MODEL.FILE)
     model_def = model_def.PointNetDet
 
-    input_channels = 3 if not cfg.DATA.WITH_EXTRA_FEAT else 4
+    input_channels = 3 if not cfg.DATA.WITH_EXTRA_FEAT else cfg.DATA.EXTRA_FEAT_DIM
     # NUM_VEC = 0 if cfg.DATA.CAR_ONLY else 3
     dataset_name = cfg.DATA.DATASET_NAME
     assert dataset_name in DATASET_INFO
@@ -325,7 +325,7 @@ def main():
         optimizer = optim.SGD(model.parameters(), lr=cfg.TRAIN.BASE_LR,
                               momentum=cfg.TRAIN.MOMENTUM, weight_decay=cfg.TRAIN.WEIGHT_DECAY)
     else:
-        assert False, 'No support now.'
+        assert False, 'Not support now.'
 
     # miles = [math.ceil(num_epochs*3/8), math.ceil(num_epochs*6/8)]
     # assert isinstance(LR_SETP, list)

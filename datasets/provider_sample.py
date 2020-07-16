@@ -148,7 +148,7 @@ class ProviderDataset(Dataset):
 
         # Compute one hot vector
         if self.one_hot:
-            one_hot_vec = np.zeros((3))
+            one_hot_vec = np.zeros((len(self.category_info.CLASSES)))
             one_hot_vec[size_class] = 1
 
         # Get point cloud
@@ -203,7 +203,7 @@ class ProviderDataset(Dataset):
             return data_inputs
 
         # ------------------------------ LABELS ----------------------------
-        seg = self.label_list[index]
+        seg = self.label_list[index].astype(np.int64)
         seg = seg[choice]
 
         # Get center point of 3D box
@@ -243,7 +243,7 @@ class ProviderDataset(Dataset):
             point_set[:, 2] += shift
             box3d_center[2] += shift
 
-        labels = self.generate_labels(box3d_center, box3d_size, heading_angle, ref2, P)
+        labels_ref2 = self.generate_labels(box3d_center, box3d_size, heading_angle, ref2, P)
 
         data_inputs = {
             'point_cloud': torch.FloatTensor(point_set).transpose(1, 0),
@@ -253,12 +253,12 @@ class ProviderDataset(Dataset):
             'center_ref3': torch.FloatTensor(ref3).transpose(1, 0),
             'center_ref4': torch.FloatTensor(ref4).transpose(1, 0),
 
-            'label': torch.LongTensor(labels),
+            'cls_label': torch.LongTensor(labels_ref2),
             'box3d_center': torch.FloatTensor(box3d_center),
             'box3d_heading': torch.FloatTensor([heading_angle]),
             'box3d_size': torch.FloatTensor(box3d_size),
-            'size_class': torch.LongTensor([size_class])
-
+            'size_class': torch.LongTensor([size_class]),
+            'seg_label': torch.LongTensor(seg.astype(np.int64))
         }
 
         if not rotate_to_center:

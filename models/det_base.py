@@ -335,7 +335,7 @@ class PointNetDet(nn.Module):
                 data_dicts):
         point_cloud = data_dicts.get('point_cloud')
         one_hot_vec = data_dicts.get('one_hot')
-        cls_label = data_dicts.get('label')
+        cls_label = data_dicts.get('cls_label')
         size_class_label = data_dicts.get('size_class')
         center_label = data_dicts.get('box3d_center')
         heading_label = data_dicts.get('box3d_heading')
@@ -402,9 +402,13 @@ class PointNetDet(nn.Module):
             center_preds = center_preds.view(batch_size, -1, 3)
 
             size_preds = size_preds.view(batch_size, -1, 3)
-            heading_preds = heading_preds.view(batch_size, -1)
+            size_probs = size_probs.view(batch_size, -1, self.num_size_cluster)
 
-            outputs = (cls_probs, center_preds, heading_preds, size_preds)
+            heading_preds = heading_preds.view(batch_size, -1)
+            heading_probs = heading_probs.view(batch_size, -1, self.num_bins)
+
+            # outputs = (cls_probs, center_preds, heading_preds, size_preds)
+            outputs = (cls_probs, center_preds, heading_preds, size_preds, heading_probs, size_probs)
             return outputs
 
         fg_idx = (cls_label.view(-1) == 1).nonzero().view(-1)

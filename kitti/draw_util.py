@@ -1,21 +1,12 @@
-''' Helper class and functions for loading KITTI objects
-
-Author: Charles R. Qi
-Date: September 2017
-'''
-
 import os
 import sys
 import numpy as np
 import cv2
 from PIL import Image
+import matplotlib.pyplot as plt
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(BASE_DIR)
-sys.path.append(os.path.join(ROOT_DIR, 'kitti'))
-
-from kitti_object import kitti_object, kitti_object_video
-import kitti_util as utils
+from kitti.kitti_object import kitti_object, kitti_object_video
+import kitti.kitti_util as utils
 
 
 def get_lidar_in_image_fov(pc_velo, calib, xmin, ymin, xmax, ymax,
@@ -58,7 +49,7 @@ def show_image_with_boxes(img, objects, calib, show3d=True, color=(0, 255, 0), s
 
         box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(obj, calib.P)
         if box3d_pts_2d is not None:
-            img2 = utils.draw_projected_box3d(img2, box3d_pts_2d, color)
+            img2 = draw_projected_box3d(img2, box3d_pts_2d, color)
 
             if len(scores) != 0:
                 xx1, yy1 = np.min(box3d_pts_2d, 0)
@@ -81,9 +72,8 @@ def show_lidar_with_boxes(pc_velo, objects, calib,
         Draw 3d box in LiDAR point cloud (in velo coord system) '''
     if 'mlab' not in sys.modules:
         import mayavi.mlab as mlab
-    from viz_util import draw_lidar_simple, draw_lidar, draw_gt_boxes3d
+        from utils.mayavi_viz_util import draw_lidar_simple, draw_lidar, draw_gt_boxes3d
 
-    print('All point num: ', pc_velo.shape[0])
     fig = mlab.figure(figure=None, bgcolor=(0, 0, 0),
                       fgcolor=None, engine=None, size=(1000, 500))
     if img_fov:
@@ -116,7 +106,6 @@ def show_lidar_on_image(pc_velo, img, calib, img_width, img_height):
     imgfov_pts_2d = pts_2d[fov_inds, :]
     imgfov_pc_rect = calib.project_velo_to_rect(imgfov_pc_velo)
 
-    import matplotlib.pyplot as plt
     cmap = plt.cm.get_cmap('hsv', 256)
     cmap = np.array([cmap(i) for i in range(256)])[:, :3] * 255
 
@@ -156,8 +145,14 @@ def draw_projected_box3d(image, qs, color=(255, 255, 255), thickness=2):
     return image
 
 
-def dataset_viz():
-    dataset = kitti_object(os.path.join(ROOT_DIR, 'dataset/KITTI/object'))
+
+
+
+if __name__ == '__main__':
+    import mayavi.mlab as mlab
+    from utils.mayavi_viz_util import draw_lidar_simple, draw_lidar, draw_gt_boxes3d
+
+    dataset = kitti_object('data/kitti/training')
 
     for data_idx in range(len(dataset)):
         # Load data from dataset
@@ -170,35 +165,10 @@ def dataset_viz():
         pc_velo = dataset.get_lidar(data_idx)[:, 0:3]
         calib = dataset.get_calibration(data_idx)
 
-        # Draw 2d and 3d boxes on image
         show_image_with_boxes(img, objects, calib, False)
         input()
-        # Show all LiDAR points. Draw 3d box in LiDAR point cloud
         show_lidar_with_boxes(pc_velo, objects, calib, True, img_width, img_height)
         input()
 
 
-def viz_kitti_video():
-    video_path = os.path.join(ROOT_DIR, 'dataset/2011_09_26/')
-    dataset = kitti_object_video(
-        os.path.join(video_path, '2011_09_26_drive_0023_sync/image_02/data'),
-        os.path.join(video_path, '2011_09_26_drive_0023_sync/velodyne_points/data'),
-        video_path)
-    print(len(dataset))
-    for i in range(len(dataset)):
-        img = dataset.get_image(0)
-        pc = dataset.get_lidar(0)
-        Image.fromarray(img).show()
-        draw_lidar(pc)
-        input()
-        pc[:, 0:3] = dataset.get_calibration().project_velo_to_rect(pc[:, 0:3])
-        draw_lidar(pc)
-        input()
-    return
 
-
-if __name__ == '__main__':
-    import mayavi.mlab as mlab
-    from viz_util import draw_lidar_simple, draw_lidar, draw_gt_boxes3d
-
-    dataset_viz()

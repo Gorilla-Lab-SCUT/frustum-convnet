@@ -124,6 +124,10 @@ bev  AP:90.42, 88.99, 86.88
 
 ```
 
+## SUNRGBD dataset
+
+Please follow the instruction [here](sunrgbd/README.md).
+
 ## Note
 
 Since we update our code from PyTorch-0.3.1 to PyTorch-1.0 and our code uses many random sampling operations, the results may be not exactly the same as those reported in our paper.
@@ -131,10 +135,6 @@ But the difference should be +-0.5\%, if you can not get the similar results, pl
 
 Our code is supported multiple GPUs for training, but now the training is very fast for small dataset, like KITTI, SUN-RGBD. All the steps will finish in one day on single GPU.
 
-## TODO
-
-- [ ] provide a demo script to visualize the detection results
-- [ ] add the support of SUN-RGBD dataset
 
 ## Acknowledgements
 

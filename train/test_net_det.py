@@ -231,7 +231,8 @@ def test(model, test_dataset, test_loader, output_filename, result_dir=None):
         with torch.no_grad():
             outputs = model(data_dicts_var)
 
-        cls_probs, center_preds, heading_preds, size_preds = outputs
+        # cls_probs, center_preds, heading_preds, size_preds = outputs
+        cls_probs, center_preds, heading_preds, size_preds, heading_probs, size_probs = outputs
 
         torch.cuda.synchronize()
         fw_time_meter.update((time.time() - tic))
@@ -243,6 +244,8 @@ def test(model, test_dataset, test_loader, output_filename, result_dir=None):
         center_preds = center_preds.data.cpu().numpy()
         heading_preds = heading_preds.data.cpu().numpy()
         size_preds = size_preds.data.cpu().numpy()
+        heading_probs = heading_probs.data.cpu().numpy()
+        size_probs = size_probs.data.cpu().numpy()
 
         rgb_probs = rgb_probs.numpy()
         rot_angles = rot_angles.numpy()
@@ -306,8 +309,8 @@ def test(model, test_dataset, test_loader, output_filename, result_dir=None):
     output_dir = os.path.join(result_dir, 'data')
 
     if 'test' not in cfg.TEST.DATASET:
-        evaluate_py_wrapper(result_dir)
-        # evaluate_cuda_wrapper(output_dir, cfg.TEST.DATASET)
+        # evaluate_py_wrapper(result_dir)
+        evaluate_cuda_wrapper(output_dir, cfg.TEST.DATASET)
     else:
         logger.info('results file save in  {}'.format(result_dir))
         os.system('cd %s && zip -q -r ../results.zip *' % (result_dir))
@@ -367,7 +370,7 @@ if __name__ == '__main__':
         drop_last=False,
         collate_fn=collate_fn)
 
-    input_channels = 3 if not cfg.DATA.WITH_EXTRA_FEAT else 4
+    input_channels = 3 if not cfg.DATA.WITH_EXTRA_FEAT else cfg.DATA.EXTRA_FEAT_DIM
     # NUM_VEC = 0 if cfg.DATA.CAR_ONLY else 3
     # NUM_VEC = 3
     dataset_name = cfg.DATA.DATASET_NAME
