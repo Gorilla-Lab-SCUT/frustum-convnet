@@ -21,7 +21,7 @@ def read_3d_points(rgbpath, depthpath, Rtilt, K):
 
     x, y = np.meshgrid(np.arange(width), np.arange(height))
     x3 = (x - cx) * depth / fx
-    y3 = (x - cy) * depth / fy
+    y3 = (y - cy) * depth / fy
     z3 = depth
 
     points = np.stack([x3.ravel(), z3.ravel(), -y3.ravel()], 1)
