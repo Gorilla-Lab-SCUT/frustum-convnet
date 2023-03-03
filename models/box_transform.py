@@ -3,14 +3,6 @@ import torch
 import pandas as pd
 
 
-def size_decode(offset, class_mean_size, size_class_label):
-
-    offset_select = torch.gather(offset, 1, size_class_label.view(-1, 1, 1).expand(-1, -1, 3))
-    offset_select = offset_select.squeeze(1)
-
-    ex = class_mean_size[size_class_label]
-
-    return offset_select * ex + ex
 
 
 def center_decode(ex, offset):
